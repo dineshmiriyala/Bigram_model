@@ -5,5 +5,5 @@ from model import bigram
 lines = open('reddit_convos.txt' , 'r').read().splitlines()
 
 bigram = bigram(lines)
-
-print(bigram.generate(10))
+bigram.generate(10)
+print(bigram.loss())

@@ -3,8 +3,10 @@
 from model import bigram,neural_network
 import os
 
+print("---------------Bigram model --------------")
+print("-------Enter only numbers or float--------")
 lines = open('reddit_convos.txt' , 'r').read().splitlines()
-model = input("Select model: \n 1: Bigram \n 2: Neural Network \n")
+model = int(input("Select model: \n 1: Bigram \n 2: Neural Network \n"))
 os.system('cls')
 if model == 1:
     n_lines = int(input('Enter how many lines you want to generate: \n'))
@@ -13,7 +15,7 @@ if model == 1:
     bigram.generate(n_lines)
     print(bigram.loss())
 else:
-    user = int(input("Enter what you want to do: \n 1. Train \n 2. Generate text \n"))
+    user = 1
     while True:
 
         if user ==1:

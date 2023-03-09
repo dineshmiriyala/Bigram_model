@@ -59,7 +59,6 @@ class bigram():
                 probability = probability / probability.sum()
                 index = torch.multinomial(probability, num_samples=1, replacement=True, generator=generator).item()
                 output.append(self.itos[index])
-                print(''.join(output))
                 if index == 0:
                     break
             print(''.join(output))
@@ -170,12 +169,14 @@ class neural_network(dataset):
         self.weights.data += -(self.learning_rate) * self.weights.grad
 
     def train(self):
+        print(f'-------Training: -----loss:')
         self.input_output()
         for i in range(self.iterations):
             logits = self.forward()
             self.softmax(logits)
             self.backward()
             self.update_weights()
+            print(f'-------iteration: {i}-----loss: {self.loss_value}')
         print(f'-------Final Loss: {self.loss_value}')
 
     def softmax(self, logits):

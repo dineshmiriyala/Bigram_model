@@ -1,6 +1,7 @@
 # imports
 import torch
 import warnings
+import torch.nn.functional as F
 
 warnings.filterwarnings('ignore')
 import matplotlib.pyplot as plt
@@ -96,5 +97,108 @@ class bigram():
         return f'Final average negative log likelihood: {negative_log_likelihood / count}'
 
 
-class bigram_with_NN():
-    None
+class dataset():
+    """This is the helper class for dataset. we will be using this in other classes."""
+
+    def __init__(self, lines):
+        self.lines = lines
+        chars = sorted(list(set(''.join(self.lines))))
+        self.stoi = {s: i + 1 for i, s in enumerate(chars)}
+        self.stoi['.'] = 0
+        self.itos = {s: i for i, s in self.stoi.items()}
+        self.x = None
+        self.y = None
+
+    def encode(self, word):
+        return self.stoi[word]
+
+    def decode(self, integer):
+        return self.itos[integer]
+
+    def input_output(self):
+        """This will give you the xs and ys of the dataset. This is useful for neural network class.
+        Idea is that we will return two tensors that has encoded integers of first character and second one with
+        encoded integers of second character. This will serve as input and output."""
+        x, y = [], []
+        for line in self.lines:
+            line = ['.'] + list(line) + ['.']
+            for ch1, ch2 in zip(line, line[1:]):
+                x.append(self.stoi[ch1])
+                y.append(self.stoi[ch2])
+        self.x = torch.tensor(x)
+        self.y = torch.tensor(y)
+        self.x = self.onehot()
+        return self.y
+
+    def onehot(self):
+        return F.one_hot(self.x, num_classes=len(self.stoi)).float()
+
+
+class neural_network(dataset):
+    """In this class we will be using Neural network to predict the next character. We will be using dataset class as our
+    helper function."""
+    """The idea is that we will be taking first character as the input and second character as output and will be training on 
+    the dataset. We will be using a simple network that has only one layer. This is a linear network(Y = X.W) and will be 
+    applying softmax to get the final output layer. Then will be using multinomial function to get one output. In a way this 
+    is a classification problem except we have a lot more classes 54 to be exact. """
+
+    def __init__(self, lines, learning_rate, regularization, iterations):
+        super().__init__(lines)
+        self.probabilities = None
+        self.gen = torch.Generator().manual_seed(9968)
+        self.weights = torch.randn((54, 54), generator=self.gen, requires_grad=True)
+        self.loss_value = None
+        self.learning_rate = learning_rate
+        self.reg = regularization
+        self.iterations = iterations
+
+    def forward(self):
+        logits = self.x @ self.weights
+        return logits
+
+    def loss(self):
+        """This is the implementation of average negative log likelihood loss"""
+        loss = -(self.probabilities[torch.arange(self.x.shape[0]), self.y].log().mean()) + self.reg * (
+            (self.weights ** 2).mean())
+        return loss
+
+    def backward(self):
+        self.weights.grad = None
+        self.loss_value.backward()
+
+    def update_weights(self):
+        self.weights.data += -(self.learning_rate) * self.weights.grad
+
+    def train(self):
+        self.input_output()
+        for i in range(self.iterations):
+            logits = self.forward()
+            self.softmax(logits)
+            self.backward()
+            self.update_weights()
+        print(f'-------Final Loss: {self.loss_value}')
+
+    def softmax(self, logits):
+        counts = logits.exp()
+        self.probabilities = counts / counts.sum(1, keepdims=True)
+        self.loss_value = self.loss()
+
+    def logits(self, xonehot):
+        return xonehot @ self.weights
+
+    def generate(self, number_of_lines):
+        """This function generates the output based on the network. It does not return anything and directly prints
+        into console"""
+        for iterations in range(number_of_lines):
+            index = 0
+            output = []
+            while True:
+                xone_hot_out = F.one_hot(torch.tensor([index]) , num_classes = 54).float()
+                logits_out = self.logits(xone_hot_out)
+                counts_out = logits_out.exp()
+                probs_out = counts_out / counts_out.sum(1 , keepdims = True)
+                index = torch.multinomial(probs_out , num_samples= 1 , replacement= True , generator = self.gen).item()
+                output.append(self.decode(index))
+                if index == 0:
+                    break
+            print(''.join(output))

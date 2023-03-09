@@ -4,7 +4,7 @@ It is not the best approach for this problem but will give us an idea of how NLP
 The data set is from https://affect.media.mit.edu/neural_chat/datasets/.
 
 In this repo I will be first using lookup table to generate sequence based on the dataset. Later on I will be training a simple neural network to do the same thing.
-For optimized Bi-gram lookup table I got a loss of :**2.3944**.
+For optimized Bi-gram lookup table I got a loss of : **2.3944**.
 
 My prediction is that the neural network will also have similar loss values to that of lookup approach. 
 

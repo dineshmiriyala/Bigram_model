@@ -1,7 +1,10 @@
 # imports
+import os.path
+
 import torch
 import warnings
 import torch.nn.functional as F
+import pickle
 
 warnings.filterwarnings('ignore')
 import matplotlib.pyplot as plt
@@ -25,12 +28,20 @@ class bigram():
         """This function creates a character level lookup matrix.
         This does not return anything but does operations on the existing 'self.lookup' which is a
         torch. tensor with datatype as int 64"""
+        length = len(self.lines)
+        bar = length // 10
+        progress = 0
+        print("Progress: ", end='')
         for line in self.lines:
+            if self.lines.index(line) % bar == 0:
+                print(f'{progress}#', end='')
+                progress += 10
             line = ['.'] + list(line) + ['.']
             for ch1, ch2 in zip(line, line[1:]):
                 idx1 = self.stoi[ch1]
                 idx2 = self.stoi[ch2]
                 self.lookup[idx1, idx2] += 1
+        print('\n')
 
     def plot(self, x_dimension, y_dimension):
         """Upon calling this function it plots the plot for lookup table. This takes
@@ -141,15 +152,12 @@ class neural_network(dataset):
     applying softmax to get the final output layer. Then will be using multinomial function to get one output. In a way this 
     is a classification problem except we have a lot more classes 54 to be exact. """
 
-    def __init__(self, lines, learning_rate, regularization, iterations):
+    def __init__(self, lines):
         super().__init__(lines)
-        self.probabilities = None
         self.gen = torch.Generator().manual_seed(9968)
-        self.weights = torch.randn((54, 54), generator=self.gen, requires_grad=True)
-        self.loss_value = None
-        self.learning_rate = learning_rate
-        self.reg = regularization
-        self.iterations = iterations
+        self.probabilities, self.weights, self.loss_value = self.load_model()
+        self.learning_rate = 50
+        self.reg = 0.5
 
     def forward(self):
         logits = self.x @ self.weights
@@ -166,18 +174,25 @@ class neural_network(dataset):
         self.loss_value.backward()
 
     def update_weights(self):
-        self.weights.data += -(self.learning_rate) * self.weights.grad
+        self.weights.data += -self.learning_rate * self.weights.grad
 
-    def train(self):
-        print(f'-------Training: -----loss:')
+    def train(self, iterations):
+        bar = 10
+        if iterations > 10:
+            bar = iterations // 10
+        progress = 0
+        print("Progress: ", end='')
         self.input_output()
-        for i in range(self.iterations):
+        for i in range(iterations):
+            if i % bar == 0:
+                print(f'{progress}#', end='')
+                progress += 10
             logits = self.forward()
             self.softmax(logits)
             self.backward()
             self.update_weights()
-            print(f'-------iteration: {i}-----loss: {self.loss_value}')
         print(f'-------Final Loss: {self.loss_value}')
+        self.save_model()
 
     def softmax(self, logits):
         counts = logits.exp()
@@ -194,12 +209,40 @@ class neural_network(dataset):
             index = 0
             output = []
             while True:
-                xone_hot_out = F.one_hot(torch.tensor([index]) , num_classes = 54).float()
+                xone_hot_out = F.one_hot(torch.tensor([index]), num_classes=54).float()
                 logits_out = self.logits(xone_hot_out)
                 counts_out = logits_out.exp()
-                probs_out = counts_out / counts_out.sum(1 , keepdims = True)
-                index = torch.multinomial(probs_out , num_samples= 1 , replacement= True , generator = self.gen).item()
+                probs_out = counts_out / counts_out.sum(1, keepdims=True)
+                index = torch.multinomial(probs_out, num_samples=1, replacement=True, generator=self.gen).item()
                 output.append(self.decode(index))
                 if index == 0:
                     break
             print(''.join(output))
+
+    def load_model(self):
+        try:
+            open('Neural_logits.pkl', 'w')
+        except FileNotFoundError:
+            print("####Model not found.####")
+        with open('Neural_logits.pkl', 'rb') as file:
+            try:
+                dict = pickle.load(file)
+            except EOFError:
+                dict = None
+        if dict is None:
+            weights = torch.randn((54, 54), generator=self.gen, requires_grad=True)
+            loss_value = None
+            probs = None
+            return probs, weights, loss_value
+        print(">>>>>>>>>>Model loaded<<<<<<<<<< \n")
+        return dict['probs'], dict['weights'], dict['loss']
+
+    def save_model(self):
+        open('Neural_logits.pkl', 'w')
+        dict = {}
+        dict['probs'] = self.probabilities
+        dict['weights'] = self.weights
+        dict['loss'] = self.loss_value
+        with open('Neural_logits.pkl', 'wb') as file:
+            pickle.dump(dict, file)
+            print("model is updated \n")

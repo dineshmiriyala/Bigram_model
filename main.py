@@ -7,11 +7,17 @@ import pickle
 print("---------------Bigram model --------------")
 print("-------Enter only numbers or float--------")
 
-if os.path.getsize('Bigram_lookup.pkl') > 0:
-    with open('Bigram_lookup.pkl' , 'rb') as file:
-        BigramModel = pickle.load(file)
-else:
+if not os.path.exists('Bigram_lookup.pkl'):
+    open('Bigram_lookup.pkl', 'w')
     BigramModel = False
+else:
+    try:
+        with open('Bigram_lookup.pkl' , 'rb') as file:
+            BigramModel = pickle.load(file)
+    except Exception:
+        BigramModel = False
+
+
 
 while True:
     lines = open('reddit_convos.txt', 'r').read().splitlines()
@@ -22,6 +28,7 @@ while True:
             print(f"Model loss: {BigramModel.loss()}")
             with open('Bigram_lookup.pkl' , 'wb') as file:
                 pickle.dump(BigramModel , file)
+                print(">>>>>>>>>>Values Updated<<<<<<<<<< \n")
         print(">>>>>>>>>>Model loaded<<<<<<<<<< \n")
         n_lines = int(input('Enter how many lines you want to generate: \n'))
         BigramModel.generate(n_lines)
@@ -34,12 +41,8 @@ while True:
                 if NeuralNetworkModel.loss_value:
                     print(f"Current Loss: {NeuralNetworkModel.loss_value:.4f} \n")
                     cont = input(f'Do you still want to continue training? (Y/N): \n')
-                if cont.lower() == 'n':
-                    cont1 = input(f'Do you want to generate text? (Y/N): \n')
-                    if cont1.lower() == 'y':
-                        n_lines = int(input('Enter how many lines you want to generate: \n'))
-                        NeuralNetworkModel.generate(n_lines)
-                    break
+                    if cont.lower() == 'n':
+                        break
                 print("Training Parameters: \n")
                 iter = int(input("Enter the number of training iterations: \n"))
                 NeuralNetworkModel.train(iter)

@@ -34,7 +34,7 @@ class bigram():
         print("Progress: ", end='')
         for line in self.lines:
             if self.lines.index(line) % bar == 0:
-                print(f'{progress}#', end='')
+                print(f'{progress}%#', end='')
                 progress += 10
             line = ['.'] + list(line) + ['.']
             for ch1, ch2 in zip(line, line[1:]):
@@ -185,7 +185,7 @@ class neural_network(dataset):
         self.input_output()
         for i in range(iterations):
             if i % bar == 0:
-                print(f'{progress}#', end='')
+                print(f'{progress}%#', end='')
                 progress += 10
             logits = self.forward()
             self.softmax(logits)
@@ -220,9 +220,8 @@ class neural_network(dataset):
             print(''.join(output))
 
     def load_model(self):
-        try:
+        if not os.path.exists('Neural_logits.pkl'):
             open('Neural_logits.pkl', 'w')
-        except FileNotFoundError:
             print("####Model not found.####")
         with open('Neural_logits.pkl', 'rb') as file:
             try:
@@ -238,7 +237,8 @@ class neural_network(dataset):
         return dict['probs'], dict['weights'], dict['loss']
 
     def save_model(self):
-        open('Neural_logits.pkl', 'w')
+        if not os.path.exists('Neural_logits.pkl'):
+            open('Neural_logits.pkl', 'w')
         dict = {}
         dict['probs'] = self.probabilities
         dict['weights'] = self.weights
